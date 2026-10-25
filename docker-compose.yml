@@ -12,6 +12,12 @@ services:
     group_add:
       - "${DOCKER_GID:-986}"
 
+    # Веб-интерфейс OpenCode. Сервис внутри контейнера слушает 0.0.0.0:49374
+    # (hostname/port заданы в config/service.json), а здесь порт публикуется на VM:
+    #   http://192.168.100.100:49374
+    ports:
+      - "49374:49374"
+
     volumes:
       # for DooD
       - /var/run/docker.sock:/var/run/docker.sock
