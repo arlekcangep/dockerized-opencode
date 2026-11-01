@@ -1,18 +1,51 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "opencode/deepseek-v4.1-flash-free",
+  "_fallback_model": "opencode/nemotron-3.5-super-vl-free",
   "providers": {
     "openrouter": {
       "settings": {
         "apiKey": "{env:OPENROUTER_API_KEY}"
       }
+    },
+    "tokenator": {
+      "name": "Tokenator",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://api.tokenator.cloud/v1",
+        "apiKey": "sk-tkn-3fbeef23-2d1e-43e6-b511-e7c620c15863"
+      },
+      "models": {
+        "tokenator-free-opus-5.5": {
+          "name": "free-claude-opus-5.5"
+        },
+        "deepseek-v4.1-flash-1017": {
+          "name": "deepseek-v4.1-flash-1017"
+        }
+      }
+      
     }
   },
   "lsp": {
     "java": {
-      "command": ["java", "-jar", "/opt/jdtls/plugins/org.eclipse.equinox.launcher_*.jar"],
-      "args": ["-configuration", "/opt/jdtls/config_linux"],
+      "command": ["java", "-jar", "/opt/jdtls/launcher.jar", "-configuration", "/opt/jdtls/config_linux"],
       "extensions": [".java"]
+    },
+    "csharp": {
+      "command": ["csharp-ls"],
+      "extensions": [".cs"]
+    },
+    "typescript": {
+      "command": ["typescript-language-server", "--stdio"],
+      "extensions": [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]
+    },
+    "bash": {
+      "command": ["bash-language-server", "start"],
+      "extensions": [".sh", ".bash"]
+    },
+    "yaml": {
+      "command": ["yaml-language-server", "--stdio"],
+      "extensions": [".yml", ".yaml"]
     }
   }
 }

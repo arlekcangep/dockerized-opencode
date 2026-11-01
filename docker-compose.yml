@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile.opencode
     container_name: opencode
-    stdin_open: true
-    tty: true
     user: "1000:1000"  # чтобы совпадало с владельцем shared folder
     # Доступ к docker-сокету хоста (Do-oD): сокет принадлежит root:<docker-gid> 0660,
     # а контейнер работает под UID 1000. GID на VM: stat -c %g /var/run/docker.sock
@@ -33,6 +31,10 @@ services:
       
       # === КЭШ MAVEN (критично! без этого каждый раз качать зависимости) ===
       - maven-cache:/home/appuser/.m2/repository
+
+      # === КЭШИ NPM и NUGET (тесты 101kpi: claude-code/*, web/*) ===
+      - npm-cache:/home/appuser/.npm
+      - nuget-cache:/home/appuser/.nuget/packages
       
     working_dir: /workspace
     environment:
@@ -45,12 +47,16 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - JAVA_HOME=/opt/java/openjdk
     
+    # PID 1 — только сервер (API + веб). TUI подключается отдельным клиентом:
+    #   docker exec -it opencode opencode
+    # Так TUI стартует уже с твоим терминалом и сразу включает захват мыши
+    # и alternate screen; иначе после перезапуска колесо крутит scrollback хоста.
     command: >
-      bash -c "
-        opencode
-      "
+      opencode serve --service --hostname 0.0.0.0 --port 49374
     # git config --global --add safe.directory /workspace/photositesrc &&
     # git config --global --add safe.directory /workspace/artplanlibs &&
 
 volumes:
   maven-cache:  # named volume — быстро, но внутри VM
+  npm-cache:    # ~/.npm: кэш npm (claude-code/*)
+  nuget-cache:  # ~/.nuget/packages: пакеты NuGet (web/*)

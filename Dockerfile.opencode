@@ -2,40 +2,76 @@ FROM eclipse-temurin:21-jdk-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Устанавливаем системные зависимости
+# 1. Системные зависимости, Node 24 и Docker CLI (Do-oD: сокет хоста проброшен в compose).
+# Node 24, а не 20: tg-bot и chat-core запускают .ts без сборки и требуют >=24, runner — >=22.
+# shellcheck — диагностика для bash-language-server (скрипты deploy.sh, scripts/).
 RUN apt-get update && apt-get install -y \
-    maven \
-    git \
-    curl \
-    unzip \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+        maven \
+        git \
+        curl \
+        unzip \
+        ca-certificates \
+        gnupg \
+        shellcheck \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 
-RUN apt-get install -y \
-    ca-certificates \
-    gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
+RUN install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && chmod a+r /etc/apt/keyrings/docker.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
-    && apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
+    && apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
 
-# 3. Устанавливаем jdtls (LSP для Java)
+
+# 2. .NET SDK — для 101kpi/web (net10.0) и C# LSP. Версия закреплена: на ней проверена
+# сборка и прогон тестов (Kpi101.AgentOrchestrator.Tests, Kpi101.Web.Tests).
+# libicu70 — зависимость рантайма .NET на jammy; без неё dotnet падает на старте.
+ARG DOTNET_VERSION=10.0.403
+RUN apt-get update && apt-get install -y --no-install-recommends libicu70 \
+    && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && bash /tmp/dotnet-install.sh --version "$DOTNET_VERSION" --install-dir /usr/local/dotnet --no-path \
+    && rm /tmp/dotnet-install.sh \
+    && ln -sf /usr/local/dotnet/dotnet /usr/local/bin/dotnet \
+    && rm -rf /var/lib/apt/lists/*
+# DOTNET_ROOT нужен шимам dotnet tool (csharp-ls): они ищут рантайм по нему, а не рядом с собой.
+ENV DOTNET_ROOT=/usr/local/dotnet \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+
+
+# 3. jdtls (LSP для Java). launcher.jar — ссылка без версии в имени: конфиг OpenCode
+# (config/opencode.json) не умеет раскрывать glob в command.
 RUN mkdir -p /opt/jdtls && \
     curl -fL "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz" \
     -o /tmp/jdtls.tar.gz && \
     tar -xzf /tmp/jdtls.tar.gz -C /opt/jdtls && \
+    ln -sf "$(ls /opt/jdtls/plugins/org.eclipse.equinox.launcher_*.jar | head -1)" /opt/jdtls/launcher.jar && \
     rm /tmp/jdtls.tar.gz
 
 
+# 4. LSP остальных языков проекта: C# (csharp-ls), TypeScript/JS, Bash, YAML.
+# Ставятся от root в /usr/local — переживают пересоздание контейнера (в отличие от ~/.local).
+ARG CSHARP_LS_VERSION=0.28.0
+ARG TYPESCRIPT_VERSION=7.0.2
+ARG TS_LSP_VERSION=6.0.2
+ARG BASH_LS_VERSION=5.8.1
+ARG YAML_LS_VERSION=2.0.0
+RUN dotnet tool install --tool-path /usr/local/dotnet-tools csharp-ls --version "$CSHARP_LS_VERSION" \
+    && ln -sf /usr/local/dotnet-tools/csharp-ls /usr/local/bin/csharp-ls \
+    && npm install -g --no-fund --no-audit \
+        "typescript@${TYPESCRIPT_VERSION}" \
+        "typescript-language-server@${TS_LSP_VERSION}" \
+        "bash-language-server@${BASH_LS_VERSION}" \
+        "yaml-language-server@${YAML_LS_VERSION}" \
+    && npm cache clean --force
 
-# 2. Устанавливаем OpenCode
-# RUN curl -fsSL https://opencode.ai/install | bash && \
-#     ls -la /root/.opencode/bin/ && \
-#     cp /root/.opencode/bin/opencode /usr/local/bin/opencode && \
-#     chmod +x /usr/local/bin/opencode && \
-#     /usr/local/bin/opencode --version
+
+# 5. Устанавливаем OpenCode
+# (старый установщик v1 оставлен для истории)
+
 
 RUN curl -fsSL https://opencode.ai/v2/install | bash && \
     cp /root/.opencode/bin/opencode /usr/local/bin/opencode && \
@@ -43,30 +79,39 @@ RUN curl -fsSL https://opencode.ai/v2/install | bash && \
     /usr/local/bin/opencode --version
 
 
-# 4. Пытаемся создать пользователя с UID 1000.
+# 6. Пытаемся создать пользователя с UID 1000.
 # Если он уже есть - игнорируем ошибку (|| true)
 RUN useradd -m -u 1000 -s /bin/bash appuser 2>/dev/null || true
+
 
 RUN chown -R 1000:1000 /opt/jdtls && \
     mkdir -p /workspace && \
     chown -R 1000:1000 /workspace
 
 
+# Каталоги кэшей (npm, NuGet) — точки монтирования named volumes из compose.
+# Создаём с владельцем 1000 до USER, иначе Docker создаст их от root и запись из-под
+# appuser упадёт; при первом монтировании права/владение копируются из образа в том.
+RUN mkdir -p /home/appuser/.npm /home/appuser/.nuget/packages && \
+    chown -R 1000:1000 /home/appuser/.npm /home/appuser/.nuget
 
-# 7. Переключаемся на пользователя с UID 1000
+
+# 6. Переключаемся на пользователя с UID 1000
 USER 1000
 
-# 8. Окружение
+
+# 7. Окружение
 ENV HOME=/home/appuser
 ENV JAVA_HOME=/opt/java/openjdk
 #ENV PATH="${JAVA_HOME}/bin:${HOME}/.local/bin:${PATH}"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 
-# 9. Инициализация Maven
+# 8. Инициализация Maven
 RUN mvn help:system || true
 
-# 10. Git: токен GitHub берётся из переменной окружения GITHUB_TOKEN,
+
+# 9. Git: токен GitHub берётся из переменной окружения GITHUB_TOKEN,
 # поэтому push/pull не спрашивают логин. Секрет в образ не запекается:
 # скрипт читает переменную в момент вызова, а не на этапе сборки.
 # Хелпер лежит в $HOME (владелец — appuser), системные пути не трогаем.
