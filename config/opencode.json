@@ -8,22 +8,40 @@
         "apiKey": "{env:OPENROUTER_API_KEY}"
       }
     },
-    "tokenator": {
-      "name": "Tokenator",
-      "package": "@opencode/ai/providers/openai-compatible",
+    "teamo": {
+      "package": "@ai-sdk/openai-compatible",
+      "name": "TeamoRouter",
+      "settings": { 
+        "baseURL": "https://api.teamorouter.com/v1", 
+        "apiKey": "sk-teamo-56dd18d288b4a96c8ff8d9f226beaaf54d37975db995fbdf" 
+      },
+      "models": { 
+        "deepseek-flash-free": { 
+          "name": "deepseek-flash-free"  
+        },
+        "glm-5.3-flash-free": { 
+          "name": "glm-5.3-flash-free" } 
+        }
+        
+    },
+    "dahl": {
+      "name": "Dahl",
+      "package": "@opencode/ai/providers/openai-compatible", 
       "settings": {
-        "baseURL": "https://api.tokenator.cloud/v1",
-        "apiKey": "sk-tkn-3fbeef23-2d1e-43e6-b511-e7c620c15863"
+        "baseURL": "https://inference.dahl.global/v1",
+        "apiKey": "dahl_BoSyG5Xyr3bKmbqxCVvGza32tQ36pbmKY"
       },
       "models": {
-        "tokenator-free-opus-5.5": {
-          "name": "free-claude-opus-5.5"
+        "MiniMaxAI/MiniMax-M2.7": {
+          "model": "MiniMaxAI/MiniMax-M2.7"
         },
-        "deepseek-v4.1-flash-1017": {
-          "name": "deepseek-v4.1-flash-1017"
+        "deepseek-ai/DeepSeek-V4-Flash-0731": {
+          "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+        },
+        "zai-org/GLM-5.3-Flash": {
+          "model": "zai-org/GLM-5.3-Flash"
         }
       }
-      
     }
   },
   "lsp": {
@@ -46,6 +64,10 @@
     "yaml": {
       "command": ["yaml-language-server", "--stdio"],
       "extensions": [".yml", ".yaml"]
+    },
+    "python": {
+      "command": ["pyright-langserver", "--stdio"],
+      "extensions": [".py", ".pyi"]
     }
   }
 }

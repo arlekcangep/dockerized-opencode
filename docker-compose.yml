@@ -32,9 +32,10 @@ services:
       # === КЭШ MAVEN (критично! без этого каждый раз качать зависимости) ===
       - maven-cache:/home/appuser/.m2/repository
 
-      # === КЭШИ NPM и NUGET (тесты 101kpi: claude-code/*, web/*) ===
-      - npm-cache:/home/appuser/.npm
-      - nuget-cache:/home/appuser/.nuget/packages
+      # === ВРЕМЕННОЕ (venv, кэши npm/NuGet и прочее) ===
+      # Вне vboxfs (там нет симлинков) — работают симлинки и запись.
+      # Временное: VM/том могут быть пересозданы, всё внутри восстанавливается.
+      - opencodetmp:/home/appuser/opencodetmp
       
     working_dir: /workspace
     environment:
@@ -58,5 +59,4 @@ services:
 
 volumes:
   maven-cache:  # named volume — быстро, но внутри VM
-  npm-cache:    # ~/.npm: кэш npm (claude-code/*)
-  nuget-cache:  # ~/.nuget/packages: пакеты NuGet (web/*)
+  opencodetmp:  # временное: venv проектов, кэши; вне vboxfs (симлинки работают)
