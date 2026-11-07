@@ -107,13 +107,13 @@ RUN chown -R 1000:1000 /opt/jdtls && \
     chown -R 1000:1000 /workspace
 
 
-# Каталог временных данных — точка монтирования named volume `opencodetmp` из compose.
-# Создаём с владельцем 1000 до USER, иначе Docker создаст его от root и запись из-под
-# appuser упадёт; при первом монтировании права/владение копируются из образа в том.
-# Внутри volume: venv проектов, кэши (npm, NuGet) и прочее временное
-# (вне vboxfs — работают симлинки, live-данные не пропадают при пересоздании).
-RUN mkdir -p /home/appuser/opencodetmp && \
-    chown -R 1000:1000 /home/appuser/opencodetmp
+# Home — точка монтирования named volume `opencodetmp` из compose (`~` == том).
+# Создаём home с владельцем 1000 до USER, иначе Docker/том сделает его от root и
+# запись из-под appuser упадёт; при ПЕРВОМ монтировании (пустой том) содержимое
+# home образa (dotfiles, .git-credential-github, .gitconfig) копируется в том.
+# Внутри тома: ~/.persinder (Persinder: БД + модели), venv проектов, кэши (npm/NuGet)
+# и прочее временное (вне vboxfs — работают симлинки, live-данные не пропадают).
+RUN chown -R 1000:1000 /home/appuser
 
 
 # 6. Переключаемся на пользователя с UID 1000
@@ -126,10 +126,10 @@ ENV JAVA_HOME=/opt/java/openjdk
 #ENV PATH="${JAVA_HOME}/bin:${HOME}/.local/bin:${PATH}"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Кэши npm и NuGet — внутри volume opencodetmp (смонтирован в compose),
-# чтобы не терялись при пересоздании контейнера.
-ENV npm_config_cache=/home/appuser/opencodetmp/cache/npm \
-    NUGET_PACKAGES=/home/appuser/opencodetmp/cache/nuget/packages
+# Кэши npm и NuGet — внутри home (= named volume opencodetmp, смонтирован в compose),
+# чтобы не терялись при пересоздании контейнера/тома.
+ENV npm_config_cache=/home/appuser/cache/npm \
+    NUGET_PACKAGES=/home/appuser/cache/nuget/packages
 
 
 # 8. Инициализация Maven

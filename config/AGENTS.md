@@ -1,5 +1,9 @@
 # Правила
 
+## Git
+
+- **НЕ пушить и не мерджить без спроса.**
+
 ## Сначала ответ, потом действия
 
 - Начинай ответ с прямого ответа на вопрос или с короткого подтверждения задачи.
@@ -27,14 +31,18 @@ _Записано по просьбе пользователя 2026-10-25._
   моего — запускать аккуратно (предпочитать `--rm` и убирать за собой).
 - ⚠️ **Всё, что поставлено в контейнере вручную, теряется при пересборке.**
   Ставить инструменты только через изменение `Dockerfile.opencode` (см. раздел ниже).
-- **Временный каталог контейнера:** `~/opencodetmp` — **один** named volume
-  (`opencodetmp` в docker-compose), смонтированный вне vboxfs (там работают симлинки,
-  поэтому pip/venv живые). Внутри — всё временное: venv проектов
-  (`~/opencodetmp/venvs/<проект>`, для Persinder — `~/opencodetmp/venvs/persinder`),
-  кэши npm (`~/opencodetmp/cache/npm`, `npm_config_cache`) и NuGet
-  (`~/opencodetmp/cache/nuget/packages`, `NUGET_PACKAGES`) и прочее.
+- **Home контейнера = named volume `opencodetmp`** (том `opencodetmp` в docker-compose,
+  смонтирован **на `/home/appuser`**, т.е. на сам home). Home лежит вне vboxfs (там
+  работают симлинки, поэтому pip/venv живые). Внутри — всё временное и домашнее:
+  `~` == каталог приложения Persinder (`~/.persinder` с моделями в `~/.persinder/models`),
+  venv проектов (`~/venvs/<проект>`, для Persinder — `~/venvs/persinder`), кэши npm
+  (`~/cache/npm`, `npm_config_cache`) и NuGet (`~/cache/nuget/packages`, `NUGET_PACKAGES`).
   venv создаётся/восстанавливается скриптом проекта (`Persinder/scripts/venv.sh`).
-- ⚠️ **`opencodetmp` — одноразовый и восстановимый.** Named volume живёт внутри Docker
+- ⚠️ **Дотфайлы git (`~/.gitconfig`, `~/.git-credential-github`) живут в томе** — при
+  пересоздании VM/тома они пропадут (в образе их копии нет, volume непустой не
+  заполняется из образа). Если потерялись — пересоздать из Dockerfile (credential-helper
+  из `GITHUB_TOKEN`), см. `Dockerfile.opencode` секция 9.
+- ⚠️ **home/`opencodetmp` — одноразовый и восстановимый.** Named volume живёт внутри Docker
   внутри VM; при **пересоздании VM или тома он пропадёт**. Источник правды — репозиторий
   и скрипты, а не содержимое каталога. После пересоздания просто прогнать
   `scripts/venv.sh`.

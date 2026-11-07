@@ -20,9 +20,12 @@
           "name": "deepseek-flash-free"  
         },
         "glm-5.3-flash-free": { 
-          "name": "glm-5.3-flash-free" } 
+          "name": "glm-5.3-flash-free"  
+        },
+        "deepseek-v4-flash-free": {
+           "name": "deepseek-v4-flash-free"
         }
-        
+      }
     },
     "dahl": {
       "name": "Dahl",
@@ -40,6 +43,19 @@
         },
         "zai-org/GLM-5.3-Flash": {
           "model": "zai-org/GLM-5.3-Flash"
+        }
+      }
+    },
+    "nararouter": {
+      "name": "nararouter",
+      "package": "@opencode/ai/providers/openai-compatible", 
+      "settings": {
+        "baseURL": "https://router.bynara.id/v1",
+        "apiKey": "sk-nry-c-ZHPqhigMV0826tYuCit-2U6KH0CvDOGnBRCpNp_Yo"
+      },
+      "models": {
+        "laguna-s-2.1": {
+          "model": "laguna-s-2.1"
         }
       }
     }

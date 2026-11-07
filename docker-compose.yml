@@ -35,7 +35,9 @@ services:
       # === ВРЕМЕННОЕ (venv, кэши npm/NuGet и прочее) ===
       # Вне vboxfs (там нет симлинков) — работают симлинки и запись.
       # Временное: VM/том могут быть пересозданы, всё внутри восстанавливается.
-      - opencodetmp:/home/appuser/opencodetmp
+      # Том смонтирован НА home контейнера (/home/appuser): поэтому ~ == opencodetmp,
+      # и каталог приложения Persinder (~/.persinder) с моделями лежит в томе.
+      - opencodetmp:/home/appuser
       
     working_dir: /workspace
     environment:
